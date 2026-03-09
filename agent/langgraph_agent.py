@@ -65,10 +65,28 @@ def route_decision(state):
 
     q = state["question"].lower()
 
-    if any(word in q for word in ["api", "endpoint", "method", "documentation"]):
+    # documentation-related questions
+    documentation_keywords = [
+        "api",
+        "endpoint",
+        "method",
+        "documentation",
+        "parameter",
+        "parameters",
+        "field",
+        "fields",
+        "example",
+        "request"
+    ]
+
+    # Force documentation node if query asks about API structure
+    if any(word in q for word in documentation_keywords):
+        print("Routing → documentation_node")
         return "documentation_node"
 
+    # fallback based on semantic intent
     if state["intent"] in ["documentation", "unknown"]:
+        print("Routing → documentation_node (intent fallback)")
         return "documentation_node"
 
     return "api_node"
@@ -148,7 +166,30 @@ def documentation_node(state: AgentState):
     if not docs:
         return {"answer": "No documentation found for this query."}
 
+    # determine operation from query
+    operation = None
+
+    if "create" in query:
+        operation = "create"
+    elif "update" in query:
+        operation = "update"
+    elif "delete" in query:
+        operation = "delete"
+    elif "list" in query or "get" in query:
+        operation = "list"
+
+    # filter docs by operation keyword
+    if operation:
+        docs = [d for d in docs if operation in d.metadata.get("operation", "")]
+
+    # fallback if filtering removed everything
+    if not docs:
+        docs = semantic_doc_search(query)
+
     doc = docs[0]
+
+    method = doc.metadata.get("method", "")
+    endpoint = doc.metadata.get("endpoint", "")
 
     operation = doc.metadata.get("operation", "")
     method = doc.metadata.get("method", "")
@@ -164,41 +205,43 @@ def documentation_node(state: AgentState):
         answer = f"HTTP Method: {method}"
 
     # parameters question
-    elif "parameter" in query or "fields" in query:
+    elif "parameter" in query or "field" in query:
 
-        lines = text.split("\n")
+        params = []
 
-        param_lines = []
-        capture = False
+        for doc in docs:
+            text = doc.page_content
 
-        for line in lines:
+            if "Required Parameters" in text or "Body Fields" in text:
 
-            if (
-                "Required Parameters" in line
-                or "Optional Parameters" in line
-                or "Query Parameters" in line
-                or "Body Fields" in line
-            ):
-                capture = True
-                continue
+                lines = text.split("\n")
 
-            if capture:
-                if line.strip() == "":
-                    break
-                param_lines.append(line.strip())
+                capture = False
 
-        if param_lines:
-            answer = "Parameters:\n" + "\n".join(param_lines)
-        else:
-            answer = "No parameters available."
+                for line in lines:
 
-    # example request question
-    elif "example" in query:
-        start = text.find("Example")
-        if start != -1:
-            answer = text[start:]
-        else:
-            answer = "No example request available."
+                    line = line.strip()
+
+                    if (
+                        line.startswith("Required Parameters")
+                        or line.startswith("Optional Parameters")
+                        or line.startswith("Query Parameters")
+                        or line.startswith("Body Fields")
+                    ):
+                        capture = True
+                        continue
+
+                    if capture:
+                        if not line or line.startswith("API Operation"):
+                            continue
+
+                        if line != "None":
+                            params.append(line)
+
+        if params:
+            return {"answer": "Parameters:\n" + "\n".join(params)}
+
+        return {"answer": "No parameters available."}
 
     # default short answer
     else:
@@ -207,6 +250,9 @@ API: {operation}
 Method: {method}
 Endpoint: {endpoint}
 """
+        
+    for d in docs:
+        print(d.page_content)
 
     return {"answer": answer.strip()}
 
@@ -234,400 +280,3 @@ builder.add_edge("api_node", END)
 builder.add_edge("documentation_node", END)
 
 graph = builder.compile()
-
-
-
-
-
-
-
-# from typing import TypedDict
-# from langgraph.graph import StateGraph, END
-
-# from agent.tools import (
-#     get_driver_count,
-#     get_total_route_count,
-#     get_vehicle_count,
-#     get_assignment_count,
-#     fleet_summary,
-#     drivers_without_vehicles,
-#     vehicles_without_drivers,
-#     routes_without_stops
-# )
-
-# from agent.retriever import retrieve_docs
-
-
-# # -----------------------------
-# # 1️⃣ STATE DEFINITION
-# # -----------------------------
-
-# class AgentState(TypedDict):
-#     question: str
-#     intent: str
-#     answer: str
-
-
-# # -----------------------------
-# # 2️⃣ INTENT DETECTION
-# # -----------------------------
-
-# def detect_intent(question: str):
-
-#     q = question.lower()
-
-#     # 🔹 Documentation priority
-#     doc_keywords = [
-#         "endpoint",
-#         "api",
-#         "method",
-#         "url",
-#         "documentation",
-#         "how to",
-#         "create",
-#         "update",
-#         "retrieve"
-#     ]
-
-#     if any(word in q for word in doc_keywords):
-#         return "documentation"
-
-#     # 🔹 Dashboard
-#     if "fleet summary" in q or "dashboard" in q:
-#         return "fleet summary"
-
-#     # 🔹 Counts
-#     if "how many drivers" in q or "driver count" in q:
-#         return "count drivers"
-
-#     if "how many vehicles" in q or "vehicle count" in q:
-#         return "count vehicles"
-
-#     if "how many routes" in q or "route count" in q:
-#         return "count routes"
-
-#     # 🔹 Anomaly Detection
-#     if "drivers without vehicles" in q:
-#         return "drivers without vehicles"
-
-#     if "vehicles without drivers" in q:
-#         return "vehicles without drivers"
-
-#     if "routes without stops" in q:
-#         return "routes without stops"
-
-#     # 🔹 Default fallback
-#     return "documentation"
-
-
-# # -----------------------------
-# # 3️⃣ NODES
-# # -----------------------------
-
-# def classify_node(state: AgentState):
-
-#     state["intent"] = detect_intent(state["question"])
-#     print("Detected Intent:", state["intent"])  # Debug
-#     return state
-
-
-# def api_node(state: AgentState):
-
-#     intent = state["intent"]
-
-#     if intent == "count drivers":
-#         state["answer"] = f"Total drivers: {get_driver_count()}"
-
-#     elif intent == "count vehicles":
-#         state["answer"] = f"Total vehicles: {get_vehicle_count()}"
-
-#     elif intent == "count routes":
-#         state["answer"] = f"Total routes: {get_total_route_count()}"
-
-#     elif intent == "fleet summary":
-#         state["answer"] = fleet_summary()
-
-#     elif intent == "drivers without vehicles":
-#         state["answer"] = drivers_without_vehicles()
-
-#     elif intent == "vehicles without drivers":
-#         state["answer"] = vehicles_without_drivers()
-
-#     elif intent == "routes without stops":
-#         state["answer"] = routes_without_stops()
-
-#     else:
-#         state["answer"] = "Unsupported API request."
-
-#     return state
-
-
-# def rag_node(state: AgentState):
-#     """
-#     Deterministic documentation retrieval.
-#     No LLM used.
-#     """
-
-#     docs = retrieve_docs(state["question"], k=1)
-
-#     if not docs:
-#         state["answer"] = "Information not available in documentation."
-#         return state
-
-#     doc = docs[0]
-#     state["answer"] = doc.page_content.strip()
-
-#     return state
-
-
-# # -----------------------------
-# # 4️⃣ ROUTING LOGIC
-# # -----------------------------
-
-# def route_decision(state: AgentState):
-
-#     if state["intent"] == "documentation":
-#         return "rag_node"
-#     else:
-#         return "api_node"
-
-
-# # -----------------------------
-# # 5️⃣ BUILD GRAPH
-# # -----------------------------
-
-# builder = StateGraph(AgentState)
-
-# builder.add_node("classify_node", classify_node)
-# builder.add_node("api_node", api_node)
-# builder.add_node("rag_node", rag_node)
-
-# builder.set_entry_point("classify_node")
-
-# builder.add_conditional_edges(
-#     "classify_node",
-#     route_decision,
-#     {
-#         "api_node": "api_node",
-#         "rag_node": "rag_node",
-#     },
-# )
-
-# builder.add_edge("api_node", END)
-# builder.add_edge("rag_node", END)
-
-# graph = builder.compile()
-
-
-# # -----------------------------
-# # 6️⃣ ENTRY FUNCTION
-# # -----------------------------
-
-# def agent_workflow(question: str):
-
-#     result = graph.invoke({
-#         "question": question,
-#         "intent": "",
-#         "answer": ""
-#     })
-
-#     return result["answer"]
-
-
-
-
-# from typing import TypedDict
-# from langgraph.graph import StateGraph, END
-# from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
-
-# from agent.tools import (
-#     get_all_drivers,
-#     get_driver_count,
-#     get_all_vehicles,
-#     get_vehicle_count,
-#     get_routes_today
-# )
-
-# from agent.retriever import retrieve_docs
-
-# # -----------------------------
-# # 1️⃣ STATE DEFINITION
-# # -----------------------------
-
-# class AgentState(TypedDict):
-#     question: str
-#     intent: str
-#     answer: str
-
-
-# # -----------------------------
-# # 2️⃣ MODELS
-# # -----------------------------
-
-# intent_classifier = pipeline(
-#     "zero-shot-classification",
-#     model="facebook/bart-large-mnli"
-# )
-
-# model_name = "google/flan-t5-base"
-
-# tokenizer = AutoTokenizer.from_pretrained(model_name)
-# model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-
-# generator = pipeline(
-#     "text-generation",   # yes, still this
-#     model=model,
-#     tokenizer=tokenizer
-# )
-
-# INTENTS = [
-#     "list drivers",
-#     "count drivers",
-#     "list vehicles",
-#     "count vehicles",
-#     "routes today",
-#     "documentation question"
-# ]
-
-# def detect_intent(question):
-
-#     q = question.lower()
-
-#     # 🔥 Documentation override rule
-#     doc_keywords = ["endpoint", "api", "method", "url", "documentation", "how to"]
-
-#     if any(word in q for word in doc_keywords):
-#         return "documentation"
-
-#     result = intent_classifier(question, INTENTS)
-
-#     label = result["labels"][0]
-#     score = result["scores"][0]
-
-#     if score < 0.60:
-#         return "documentation"
-
-#     return label
-
-# # -----------------------------
-# # 3️⃣ NODES
-# # -----------------------------
-# def classify_node(state: AgentState):
-#     state["intent"] = detect_intent(state["question"])
-#     print("Detected Intent:", state["intent"])  # debug
-#     return state
-
-
-# def api_node(state: AgentState):
-
-#     intent = state["intent"]
-
-#     if intent == "list drivers":
-#         state["answer"] = get_all_drivers()
-
-#     elif intent == "count drivers":
-#         state["answer"] = get_driver_count()
-
-#     elif intent == "list vehicles":
-#         state["answer"] = get_all_vehicles()
-
-#     elif intent == "count vehicles":
-#         state["answer"] = get_vehicle_count()
-
-#     elif intent == "routes today":
-#         state["answer"] = get_routes_today()
-
-#     return state
-
-
-# def rag_node(state: AgentState):
-
-#     docs = retrieve_docs(state["question"], k=1)
-#     context = "\n".join([doc.page_content for doc in docs])
-
-#     prompt = f"""
-# Answer the question using the provided context.
-
-# Context:
-# {context}
-
-# Question:
-# {state['question']}
-
-# Answer:
-# """
-
-#     result = generator(
-#         prompt,
-#         max_new_tokens=120,
-#         do_sample=False,
-#         return_full_text=False,
-#         eos_token_id=tokenizer.eos_token_id
-#     )
-
-#     print("RAW OUTPUT:", result)
-#     result = generator(
-#     prompt,
-#     max_new_tokens=120,
-#     do_sample=False,
-#     return_full_text=False,
-#     eos_token_id=tokenizer.eos_token_id
-# )
-
-#     state["answer"] = result[0]["generated_text"].strip()
-
-#     return state
-
-
-# # -----------------------------
-# # 4️⃣ ROUTING LOGIC
-# # -----------------------------
-
-# def route_decision(state: AgentState):
-
-#     if state["intent"] == "documentation":
-#         return "rag_node"
-#     else:
-#         return "api_node"
-
-
-# # -----------------------------
-# # 5️⃣ BUILD GRAPH
-# # -----------------------------
-
-# builder = StateGraph(AgentState)
-
-# builder.add_node("classify_node", classify_node)
-# builder.add_node("api_node", api_node)
-# builder.add_node("rag_node", rag_node)
-
-# builder.set_entry_point("classify_node")
-
-# builder.add_conditional_edges(
-#     "classify_node",
-#     route_decision,
-#     {
-#         "api_node": "api_node",
-#         "rag_node": "rag_node",
-#     },
-# )
-
-# builder.add_edge("api_node", END)
-# builder.add_edge("rag_node", END)
-
-# graph = builder.compile()
-
-
-# # -----------------------------
-# # 6️⃣ ENTRY FUNCTION
-# # -----------------------------
-
-# def agent_workflow(question: str):
-
-#     result = graph.invoke({
-#         "question": question,
-#         "intent": "",
-#         "answer": ""
-#     })
-
-#     return result["answer"]

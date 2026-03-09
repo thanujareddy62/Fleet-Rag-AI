@@ -35,9 +35,10 @@ def normalize_query(q):
 
 def semantic_doc_search(query):
 
-    query_lower = query.lower()
+    query_lower = normalize_query(query)
 
-    docs_with_scores = vectorstore.similarity_search_with_score(query, k=4)
+    # retrieve more chunks so parameter chunks are not missed
+    docs_with_scores = vectorstore.similarity_search_with_score(query_lower, k=8)
 
     filtered_docs = []
 
@@ -61,7 +62,8 @@ def semantic_doc_search(query):
     elif "list" in query_lower or "all" in query_lower:
         filtered_docs = [d for d in filtered_docs if "list" in d.metadata.get("operation","")] or filtered_docs
 
-    return filtered_docs[:2]
+    # return more chunks so documentation_node can extract parameters
+    return filtered_docs[:6]
 
 # def semantic_doc_search(query):
 
