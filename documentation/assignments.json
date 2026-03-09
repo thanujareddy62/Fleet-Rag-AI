@@ -1,0 +1,104 @@
+{
+  "category": "driver_vehicle_assignments",
+  "operations": [
+    {
+      "operation": "list_assignments",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/driver-vehicle-assignments",
+      "description": "Retrieve current driver-vehicle assignments.",
+      "purpose": "Fetch all assignments between drivers and vehicles.",
+      "usage": "Used to identify which driver is assigned to which vehicle.",
+      "keywords": ["driver vehicle assignments", "list assignments", "driver vehicle mapping"],
+      "query_parameters": [
+        {
+          "name": "filterBy",
+          "type": "string",
+          "allowed": ["drivers", "vehicles"],
+          "description": "Filter assignments by drivers or vehicles."
+        },
+        {
+          "name": "driverIds",
+          "type": "array",
+          "description": "Filter assignments for specific driver IDs."
+        },
+        {
+          "name": "vehicleIds",
+          "type": "array",
+          "description": "Filter assignments for specific vehicle IDs."
+        },
+        {
+          "name": "startTime",
+          "type": "string",
+          "format": "RFC3339",
+          "description": "Start time for assignment filtering."
+        },
+        {
+          "name": "endTime",
+          "type": "string",
+          "format": "RFC3339",
+          "description": "End time for assignment filtering."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "description": "Pagination cursor for fetching next page."
+        }
+      ]
+    },
+    {
+      "operation": "create_assignment",
+      "method": "POST",
+      "endpoint": "https://api.samsara.com/fleet/driver-vehicle-assignments",
+      "description": "Assign a driver to a vehicle.",
+      "purpose": "Create a relationship between a driver and a vehicle.",
+      "usage": "Used when assigning drivers to vehicles for operations or trips.",
+      "keywords": ["assign driver vehicle", "driver vehicle assignment"],
+      "required_parameters": [
+        "driverId",
+        "vehicleId"
+      ],
+      "optional_parameters": [
+        "startTime",
+        "endTime",
+        "assignedAtTime"
+      ],
+      "example_request": {
+        "driverId": "12345",
+        "vehicleId": "98765",
+        "startTime": "2026-03-05T10:00:00Z"
+      }
+    },
+    {
+      "operation": "remove_assignment",
+      "method": "DELETE",
+      "endpoint": "https://api.samsara.com/fleet/driver-vehicle-assignments/{id}",
+      "description": "Remove a driver from a vehicle.",
+      "purpose": "Remove an existing assignment between a driver and vehicle.",
+      "usage": "Used when a driver is no longer assigned to a specific vehicle.",
+      "keywords": ["remove assignment", "unassign driver vehicle"],
+      "required_parameters": [
+        "vehicleId",
+        "startTime"
+      ]
+    },
+    {
+      "operation": "update_assignment",
+      "method": "PATCH",
+      "endpoint": "https://api.samsara.com/fleet/driver-vehicle-assignments/{id}",
+      "description": "Update a driver-vehicle assignment.",
+      "purpose": "Modify an existing driver and vehicle assignment.",
+      "usage": "Used when reassignment or correction of driver-vehicle mapping is needed.",
+      "keywords": ["update assignment", "modify driver vehicle assignment"],
+      "required_parameters": [
+        "driverId",
+        "vehicleId",
+        "startTime"
+      ],
+      "optional_parameters": [
+        "endTime",
+        "assignedAtTime",
+        "isPassenger"
+      ]
+    }
+  ]
+}

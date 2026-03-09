@@ -1,0 +1,142 @@
+{
+  "category": "drivers",
+  "operations": [
+    {
+      "operation": "list_drivers",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/drivers",
+      "description": "Retrieve all drivers in the organization.",
+      "purpose": "Used to fetch the list of all drivers available in the Samsara fleet system.",
+      "usage": "Developers use this API to display drivers in dashboards, driver management panels, or analytics systems.",
+      "keywords": [
+        "drivers",
+        "list drivers",
+        "get drivers",
+        "all drivers",
+        "fleet drivers"
+      ],
+      "query_parameters": [
+        {
+          "name": "driverActivationStatus",
+          "type": "string",
+          "allowed": [
+            "active",
+            "deactivated"
+          ],
+          "description": "Filter drivers by activation status. Defaults to active."
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "range": "1-512",
+          "description": "Maximum number of drivers returned."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "description": "Pagination cursor for fetching the next page."
+        },
+        {
+          "name": "parentTagIds",
+          "type": "array",
+          "description": "Filter drivers by parent tag IDs."
+        },
+        {
+          "name": "tagIds",
+          "type": "array",
+          "description": "Filter drivers by tag IDs."
+        },
+        {
+          "name": "attributeValueIds",
+          "type": "array",
+          "description": "Filter drivers by attribute values."
+        },
+        {
+          "name": "attributes",
+          "type": "array",
+          "description": "Filter drivers by attribute name-value pairs."
+        },
+        {
+          "name": "updatedAfterTime",
+          "type": "string",
+          "description": "Return drivers updated after the specified time."
+        },
+        {
+          "name": "createdAfterTime",
+          "type": "string",
+          "description": "Return drivers created after the specified time."
+        }
+      ]
+    },
+    {
+      "operation": "create_driver",
+      "method": "POST",
+      "endpoint": "https://api.samsara.com/fleet/drivers",
+      "description": "Create or register a new driver in the fleet system.",
+      "purpose": "Allows administrators or systems to add a new driver to the fleet management platform.",
+      "usage": "Used when onboarding new drivers or registering drivers in the fleet system.",
+      "keywords": [
+        "create driver",
+        "add driver",
+        "new driver",
+        "register driver"
+      ],
+      "required_parameters": [
+        "name",
+        "username",
+        "password"
+      ],
+      "optional_parameters": [
+        "phone",
+        "licenseNumber",
+        "notes",
+        "timezone"
+      ],
+      "example_request": {
+        "name": "John Doe",
+        "username": "john_doe",
+        "password": "secure123"
+      }
+    },
+    {
+      "operation": "retrieve_driver",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/drivers/{id}",
+      "description": "Retrieve detailed information about a specific driver.",
+      "purpose": "Fetch detailed information of a particular driver using their ID.",
+      "usage": "Used when viewing driver details in driver profile pages or dashboards.",
+      "keywords": [
+        "driver details",
+        "get driver",
+        "driver info",
+        "retrieve driver"
+      ],
+      "required_parameters": {
+        "id" : "Driver ID"
+      }
+    },
+    {
+      "operation": "update_driver",
+      "method": "PATCH",
+      "endpoint": "https://api.samsara.com/fleet/drivers/{id}",
+      "description": "Update driver information.",
+      "purpose": "Allows updating driver attributes such as name, phone number, username, or activation status.",
+      "usage": "Used when administrators modify driver records in the fleet system.",
+      "required_parameters": {
+        "id": "Driver ID"
+      },
+      "body_fields": [
+        "name",
+        "username",
+        "phone",
+        "driverActivationStatus"
+      ],
+      "keywords": [
+        "update driver",
+        "modify driver",
+        "edit driver",
+        "change driver information"
+      ]
+    }
+  ]
+}

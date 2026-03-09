@@ -1,0 +1,84 @@
+{
+  "category": "vehicles",
+  "operations": [
+    {
+      "operation": "create_vehicle",
+      "method": "POST",
+      "endpoint": "https://api.samsara.com/fleet/vehicles",
+      "description": "Create a new vehicle in the organization.",
+      "purpose": "Register a new vehicle in the Samsara fleet system.",
+      "usage": "Used when adding new vehicles to the organization's fleet database.",
+      "keywords": ["create vehicle", "add vehicle", "new vehicle", "register vehicle"]
+    },
+    {
+      "operation": "list_vehicles",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/vehicles",
+      "description": "Retrieve all vehicles in the organization.",
+      "purpose": "Fetch a list of all vehicles managed by the fleet system.",
+      "usage": "Used in dashboards or fleet monitoring systems to show all available vehicles.",
+      "keywords": ["list vehicles", "all vehicles", "get vehicles", "fleet vehicles"],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "range": "1-512",
+          "description": "Maximum number of vehicles returned in the response."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "description": "Pagination cursor used to fetch the next page of results."
+        },
+        {
+          "name": "tagIds",
+          "type": "string",
+          "description": "Filter vehicles based on tag IDs."
+        },
+        {
+          "name": "updatedAfterTime",
+          "type": "string",
+          "description": "Return vehicles updated after the specified timestamp."
+        },
+        {
+          "name": "createdAfterTime",
+          "type": "string",
+          "description": "Return vehicles created after the specified timestamp."
+        }
+      ]
+
+    },
+    {
+      "operation": "retrieve_vehicle",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/vehicles/{id}",
+      "description": "Retrieve detailed information about a specific vehicle.",
+      "purpose": "Fetch detailed information about a vehicle using its unique ID.",
+      "usage": "Used when displaying detailed vehicle information in fleet management interfaces.",
+      "keywords": ["vehicle details", "vehicle info", "retrieve vehicle", "get vehicle"],
+      "required_parameters": {
+        "id": "Vehicle ID"
+      }
+    },
+    {
+      "operation": "update_vehicle",
+      "method": "PATCH",
+      "endpoint": "https://api.samsara.com/fleet/vehicles/{id}",
+      "description": "Update vehicle information.",
+      "purpose": "Allows modification of vehicle attributes such as name, VIN, or license plate.",
+      "usage": "Used when updating vehicle records or correcting vehicle details.",
+      "keywords": ["update vehicle", "edit vehicle", "modify vehicle"],
+      "required_parameters": {
+        "id": "Vehicle ID"
+      },
+      "body_fields": [
+        "name",
+        "licensePlate",
+        "vin",
+        "notes",
+        "staticAssignedDriverId",
+        "tagIds"
+      ]
+    }
+  ]
+}

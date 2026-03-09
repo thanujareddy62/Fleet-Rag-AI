@@ -1,0 +1,109 @@
+{
+  "category": "routes",
+  "operations": [
+    {
+      "operation": "list_routes",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/routes",
+      "description": "Retrieve routes within a specified time range.",
+      "purpose": "Fetch all routes scheduled within a given start and end time.",
+      "usage": "Used in route planning dashboards and route analytics tools.",
+      "keywords": ["list routes", "get routes", "fleet routes", "routes list"],
+      "query_parameters": [
+        {
+          "name": "startTime",
+          "type": "string",
+          "required": true,
+          "description": "Start time in RFC3339 format."
+        },
+        {
+          "name": "endTime",
+          "type": "string",
+          "required": true,
+          "description": "End time in RFC3339 format."
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "range": "1-512",
+          "description": "Maximum number of routes returned."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "description": "Pagination cursor for next page."
+        }
+      ]
+    },
+    {
+      "operation": "retrieve_route",
+      "method": "GET",
+      "endpoint": "https://api.samsara.com/fleet/routes/{id}",
+      "description": "Retrieve detailed information about a specific route.",
+      "purpose": "Fetch full details of a specific route including stops and scheduling.",
+      "usage": "Used when viewing route details or analyzing a route plan.",
+      "keywords": ["route details", "retrieve route", "get route"],
+      "required_parameters": {
+        "id": "Route ID"
+      }
+    },
+    {
+      "operation": "create_route",
+      "method": "POST",
+      "endpoint": "https://api.samsara.com/fleet/routes",
+      "description": "Create a new route.",
+      "purpose": "Used to define a new route with stops and scheduling information.",
+      "usage": "Used in route planning systems for delivery or logistics management.",
+      "keywords": ["create route", "new route", "add route"],
+      "required_parameters": [
+        "name",
+        "stops"
+      ],
+      "optional_parameters": [
+        "driverId",
+        "vehicleId",
+        "notes"
+      ],
+      "stops_structure": {
+        "required_fields": [
+          "addressId"
+        ],
+        "optional_fields": [
+          "name",
+          "scheduledArrivalTime",
+          "scheduledDepartureTime"
+        ]
+      }
+    },
+    {
+      "operation": "update_route",
+      "method": "PATCH",
+      "endpoint": "https://api.samsara.com/fleet/routes/{id}",
+      "description": "Update route details.",
+      "purpose": "Modify route information such as route name, stops, or scheduling.",
+      "usage": "Used when route plans change or require updates.",
+      "keywords": ["update route", "edit route", "modify route"],
+      "required_parameters": {
+        "id": "Route ID"
+      },
+      "body_fields": [
+        "driverId",
+        "vehicleId",
+        "name",
+        "notes"
+      ]
+    },
+    {
+      "operation": "delete_route",
+      "method": "DELETE",
+      "endpoint": "https://api.samsara.com/fleet/routes/{id}",
+      "description": "Delete a route.",
+      "purpose": "Delete a dispatch route and its associated stops.",
+      "usage": "Used to delete an existing route.",
+      "keywords": ["delete route", "remove route"],
+      "required_parameters": {
+        "id": "Route ID"
+      }
+    }
+  ]
+}
