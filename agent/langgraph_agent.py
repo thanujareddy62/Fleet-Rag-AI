@@ -1,3 +1,4 @@
+import json
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from agent.doc_vector_retriever import semantic_doc_search
@@ -12,7 +13,8 @@ from agent.tools import (
     get_routes_today,
     get_route_count,
     get_driver_vehicle_assignments_count,
-    get_driver_vehicle_assignments 
+    get_driver_vehicle_assignments,
+    fleet_summary
 )
 
 from agent.intent_classifier import detect_intent_semantic
@@ -64,6 +66,17 @@ def detect_intent(question):
 def route_decision(state):
 
     q = state["question"].lower()
+
+    # API request generator
+    if any(word in q for word in [
+        "generate api request",
+        "generate request",
+        "example request",
+        "request body",
+        "curl request"
+    ]):
+        print("Routing → request_generator_node")
+        return "request_generator_node"
 
     # documentation-related questions
     documentation_keywords = [
@@ -128,6 +141,9 @@ def api_node(state: AgentState):
             state["answer"] = get_vehicle_by_driver_name(name)
         else:
             state["answer"] = "Driver name not detected."
+
+    elif intent == "fleet summary":
+        state["answer"] = fleet_summary()
         
     else:
         state["answer"] = "I couldn't understand the request."
@@ -136,126 +152,132 @@ def api_node(state: AgentState):
 
 def documentation_node(state: AgentState):
 
-    # First try deterministic JSON match
-#     match = match_documentation(state["question"])
-
-#     if match:
-
-#         state["answer"] = f"""
-# Method: {match['method']}
-# Endpoint: {match['endpoint']}
-# Description: {match['description']}
-# """
-
-#         return state
-
-    # If JSON lookup fails → semantic vector search
-    # result = semantic_doc_search(state["question"])
-
-    # if result:
-    #     state["answer"] = result
-    #     print("This is from vector db")
-    # else:
-    #     state["answer"] = "Documentation not found."
-
-    # return state
     query = state["question"].lower()
 
     docs = semantic_doc_search(query)
 
     if not docs:
-        return {"answer": "No documentation found for this query."}
-
-    # determine operation from query
-    operation = None
-
-    if "create" in query:
-        operation = "create"
-    elif "update" in query:
-        operation = "update"
-    elif "delete" in query:
-        operation = "delete"
-    elif "list" in query or "get" in query:
-        operation = "list"
-
-    # filter docs by operation keyword
-    if operation:
-        docs = [d for d in docs if operation in d.metadata.get("operation", "")]
-
-    # fallback if filtering removed everything
-    if not docs:
-        docs = semantic_doc_search(query)
+        return {"answer": "Documentation not found."}
 
     doc = docs[0]
-
-    method = doc.metadata.get("method", "")
-    endpoint = doc.metadata.get("endpoint", "")
 
     operation = doc.metadata.get("operation", "")
     method = doc.metadata.get("method", "")
     endpoint = doc.metadata.get("endpoint", "")
-    text = doc.page_content
 
     # endpoint question
     if "endpoint" in query:
-        answer = f"Endpoint: {endpoint}"
+        return {"answer": f"Endpoint: {endpoint}"}
 
     # method question
-    elif "method" in query or "http method" in query:
-        answer = f"HTTP Method: {method}"
+    if "method" in query:
+        return {"answer": f"HTTP Method: {method}"}
 
     # parameters question
-    elif "parameter" in query or "field" in query:
+    if "parameter" in query:
 
         params = []
 
-        for doc in docs:
-            text = doc.page_content
+        for d in docs:
 
-            if "Required Parameters" in text or "Body Fields" in text:
+            lines = d.page_content.split("\n")
 
-                lines = text.split("\n")
+            capture = False
 
-                capture = False
+            for line in lines:
 
-                for line in lines:
+                line = line.strip()
 
-                    line = line.strip()
+                if line.startswith(("Required Parameters", "Optional Parameters", "Query Parameters", "Body Fields")):
+                    capture = True
+                    continue
 
-                    if (
-                        line.startswith("Required Parameters")
-                        or line.startswith("Optional Parameters")
-                        or line.startswith("Query Parameters")
-                        or line.startswith("Body Fields")
-                    ):
-                        capture = True
+                if capture:
+                    if not line or line.startswith("API Operation"):
+                        capture = False
                         continue
 
-                    if capture:
-                        if not line or line.startswith("API Operation"):
-                            continue
+                    if line != "None":
+                        params.append(line)
 
-                        if line != "None":
-                            params.append(line)
+        params = list(dict.fromkeys(params))
 
         if params:
             return {"answer": "Parameters:\n" + "\n".join(params)}
 
         return {"answer": "No parameters available."}
 
-    # default short answer
+    print("This is from vectordb")
+    return {
+        "answer": f"API: {operation}\nMethod: {method}\nEndpoint: {endpoint}"
+    }
+
+
+def request_generator_node(state: AgentState):
+
+    query = state["question"]
+
+    docs = semantic_doc_search(query)
+
+    if not docs:
+        return {"answer": "API documentation not found."}
+
+    doc = docs[0]
+
+    operation = doc.metadata.get("operation", "")
+    method = doc.metadata.get("method", "")
+    endpoint = doc.metadata.get("endpoint", "")
+
+    required_params = doc.metadata.get("required_parameters", [])
+    optional_params = doc.metadata.get("optional_parameters", [])
+    query_params = doc.metadata.get("query_parameters", [])
+    body_fields = doc.metadata.get("body_fields", [])
+
+    body = {}
+    query_dict = {}
+
+    # Required parameters
+    if isinstance(required_params, dict):
+        for k in required_params.keys():
+            body[k] = "value"
     else:
-        answer = f"""
+        for p in required_params:
+            body[p] = "value"
+
+    # Optional parameters
+    if isinstance(optional_params, list):
+        for p in optional_params:
+            body[p] = "optional_value"
+
+    # Body fields
+    if isinstance(body_fields, list):
+        for p in body_fields:
+            body[p] = "value"
+
+    # Query parameters
+    if isinstance(query_params, list):
+        for p in query_params:
+            if isinstance(p, dict):
+                name = p.get("name")
+                if name:
+                    query_dict[name] = "value"
+
+    body_json = json.dumps(body, indent=2)
+    query_json = json.dumps(query_dict, indent=2)
+
+    answer = f"""
 API: {operation}
-Method: {method}
-Endpoint: {endpoint}
+
+{method} {endpoint}
+
+Query Parameters:
+{query_json}
+
+Request Body:
+{body_json}
 """
-        
-    for d in docs:
-        print(d.page_content)
 
     return {"answer": answer.strip()}
-
 
 
 # BUILD GRAPH
@@ -264,6 +286,7 @@ builder = StateGraph(AgentState)
 builder.add_node("classify_node", classify_node)
 builder.add_node("api_node", api_node)
 builder.add_node("documentation_node", documentation_node)
+builder.add_node("request_generator_node", request_generator_node)
 
 builder.set_entry_point("classify_node")
 
@@ -272,11 +295,13 @@ builder.add_conditional_edges(
     route_decision,
     {
         "api_node": "api_node",
-        "documentation_node": "documentation_node"
+        "documentation_node": "documentation_node",
+        "request_generator_node": "request_generator_node"
     }
 )
 
 builder.add_edge("api_node", END)
 builder.add_edge("documentation_node", END)
+builder.add_edge("request_generator_node", END)
 
 graph = builder.compile()

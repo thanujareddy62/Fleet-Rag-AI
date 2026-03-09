@@ -14,6 +14,9 @@ INTENT_EXAMPLES = {
         "display drivers",
         "drivers list"
     ],
+    "fleet summary" : [
+        "give fleet summary"
+    ],
 
     "count drivers": [
         "how many drivers",

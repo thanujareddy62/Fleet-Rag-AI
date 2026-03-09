@@ -37,31 +37,18 @@ def semantic_doc_search(query):
 
     query_lower = normalize_query(query)
 
-    # retrieve more chunks so parameter chunks are not missed
-    docs_with_scores = vectorstore.similarity_search_with_score(query_lower, k=8)
+    docs_with_scores = vectorstore.similarity_search_with_score(query_lower, k=10)
 
-    filtered_docs = []
+    docs = [doc for doc, _ in docs_with_scores]
 
-    for doc, score in docs_with_scores:
-        if score < 1.2:
-            filtered_docs.append(doc)
+    if not docs:
+        return []
 
-    if not filtered_docs:
-        filtered_docs = [doc for doc, _ in docs_with_scores]
+    # detect best operation from top result
+    operation = docs[0].metadata.get("operation")
 
-    # operation boosting
-    if "create" in query_lower:
-        filtered_docs = [d for d in filtered_docs if "create" in d.metadata.get("operation","")] or filtered_docs
+    # return only chunks belonging to that operation
+    operation_docs = [d for d in docs if d.metadata.get("operation") == operation]
 
-    elif "update" in query_lower:
-        filtered_docs = [d for d in filtered_docs if "update" in d.metadata.get("operation","")] or filtered_docs
-
-    elif "delete" in query_lower:
-        filtered_docs = [d for d in filtered_docs if "delete" in d.metadata.get("operation","")] or filtered_docs
-
-    elif "list" in query_lower or "all" in query_lower:
-        filtered_docs = [d for d in filtered_docs if "list" in d.metadata.get("operation","")] or filtered_docs
-
-    # return more chunks so documentation_node can extract parameters
-    return filtered_docs[:6]
+    return operation_docs
 

@@ -76,7 +76,7 @@ def get_driver_count(org_id=None):
     response = requests.get(url, headers=headers, params=params)
     drivers = response.json().get("data", [])
 
-    return len(drivers)
+    return f"Total vehicles: {len(drivers)}"
 
 
 def get_all_vehicles():
@@ -109,7 +109,7 @@ def get_vehicle_count():
 
     response = requests.get(
         f"{BASE_URL}/fleet/vehicles",
-        headers=headers
+        headers=headers,
     )
 
     if response.status_code != 200:
@@ -169,18 +169,24 @@ def get_driver_vehicle_assignments_count():
 
     headers = get_headers()
 
+    if not headers:
+        return "SAMSARA_TOKEN not set."
+    
     response = requests.get(
         f"{BASE_URL}/fleet/driver-vehicle-assignments",
         headers=headers,
-        params={"assignmentType": "HOS"}
+        params = {
+            "filterBy": "drivers",
+            "assignmentType": "HOS",
+        }
     )
 
     if response.status_code != 200:
-        return "API error"
+        return f"API Error: {response.status_code}"
 
     assignments = response.json().get("data", [])
 
-    return f"There are {len(assignments)} driver-vehicle assignments."
+    return f"Total driver-vehicle assignments: {len(assignments)}"
 
 
 def get_route_count():
@@ -349,12 +355,12 @@ def get_vehicle_by_driver_name(driver_name):
 # DASHBOARD MODE
 # -----------------------------
 
-def fleet_summary(org_id=None):
+def fleet_summary():
 
-    drivers = get_driver_count(org_id)
-    vehicles = get_vehicle_count(org_id)
-    assignments = get_driver_vehicle_assignments_count(org_id)
-    routes = get_route_count(org_id)
+    drivers = get_driver_count()
+    vehicles = get_vehicle_count()
+    assignments = get_driver_vehicle_assignments_count()
+    routes = get_route_count()
 
     return f"""
 Fleet Summary:

@@ -3,6 +3,7 @@ import json
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from sympy import content
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -33,6 +34,7 @@ def format_field(value):
 
 
 def load_docs():
+
     docs = []
 
     for file in os.listdir(DOC_PATH):
@@ -68,10 +70,14 @@ def load_docs():
                 "operation": operation,
                 "method": method,
                 "endpoint": endpoint,
+                "required_parameters": op.get("required_parameters", []),
+                "optional_parameters": op.get("optional_parameters", []),
+                "query_parameters": op.get("query_parameters", []),
+                "body_fields": op.get("body_fields", []),
                 "source": file
             }
 
-            # 1️⃣ Description Chunk
+            # Description chunk
             docs.append(
                 Document(
                     page_content=f"""
@@ -84,7 +90,7 @@ Description:
                 )
             )
 
-            # 2️⃣ Endpoint + Method Chunk
+            # Endpoint + Method chunk
             docs.append(
                 Document(
                     page_content=f"""
@@ -100,7 +106,7 @@ Endpoint:
                 )
             )
 
-            # 3️⃣ Parameters Chunk
+            # Parameters chunk
             docs.append(
                 Document(
                     page_content=f"""
@@ -122,7 +128,7 @@ Body Fields:
                 )
             )
 
-            # 4️⃣ Keywords Chunk
+            # Keywords chunk
             docs.append(
                 Document(
                     page_content=f"""
@@ -136,6 +142,7 @@ Keywords:
             )
 
     print(f"Loaded {len(docs)} documentation chunks")
+
     return docs
 
 
