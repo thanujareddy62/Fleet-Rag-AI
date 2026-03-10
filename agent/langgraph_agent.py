@@ -1,7 +1,8 @@
-import json
+import json, re
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 from agent.doc_vector_retriever import semantic_doc_search
+from agent.entity_extractors.driver_extractor import extract_driver_data
 
 from agent.documentation import match_documentation
 from agent.tools import (
@@ -213,6 +214,103 @@ def documentation_node(state: AgentState):
     }
 
 
+# def request_generator_node(state: AgentState):
+
+#     query = state["question"]
+
+#     docs = semantic_doc_search(query)
+
+#     if not docs:
+#         return {"answer": "API documentation not found."}
+
+#     doc = docs[0]
+
+#     operation = doc.metadata.get("operation", "")
+#     method = doc.metadata.get("method", "")
+#     endpoint = doc.metadata.get("endpoint", "")
+
+#     required_params = doc.metadata.get("required_parameters", [])
+#     optional_params = doc.metadata.get("optional_parameters", [])
+#     query_params = doc.metadata.get("query_parameters", [])
+#     body_fields = doc.metadata.get("body_fields", [])
+
+#     body = {}
+#     query_dict = {}
+
+#     # Required parameters
+#     if isinstance(required_params, dict):
+#         for k in required_params.keys():
+#             body[k] = "value"
+#     else:
+#         for p in required_params:
+#             body[p] = "value"
+
+#     # Optional parameters
+#     if isinstance(optional_params, list):
+#         for p in optional_params:
+#             body[p] = "optional_value"
+
+#     # Body fields
+#     if isinstance(body_fields, list):
+#         for p in body_fields:
+#             body[p] = "value"
+
+#     # Query parameters
+#     if isinstance(query_params, list):
+#         for p in query_params:
+#             if isinstance(p, dict):
+#                 name = p.get("name")
+#                 if name:
+#                     query_dict[name] = "value"
+
+#     body_json = json.dumps(body, indent=2)
+#     query_json = json.dumps(query_dict, indent=2)
+
+#     answer = f"""
+# API: {operation}
+
+# {method} {endpoint}
+
+# Query Parameters:
+# {query_json}
+
+# Request Body:
+# {body_json}
+# """
+
+#     return {"answer": answer.strip()}
+
+
+
+
+def extract_driver_details(text):
+
+    name = None
+    username = None
+    password = None
+
+    name_match = re.search(r"named\s+([A-Za-z]+)", text)
+    username_match = re.search(r"username\s+([A-Za-z0-9_]+)", text)
+    password_match = re.search(r"password\s+([A-Za-z0-9_]+)", text)
+
+    if name_match:
+        name = name_match.group(1)
+
+    if username_match:
+        username = username_match.group(1)
+
+    if password_match:
+        password = password_match.group(1)
+
+    return {
+        "name": name,
+        "username": username,
+        "password": password
+    }
+
+
+
+
 def request_generator_node(state: AgentState):
 
     query = state["question"]
@@ -236,23 +334,34 @@ def request_generator_node(state: AgentState):
     body = {}
     query_dict = {}
 
+    # 🔹 Extract driver values from natural language
+    driver_data = extract_driver_data(query)
+
+    for k, v in driver_data.items():
+        if v:
+            body[k] = v
+
     # Required parameters
     if isinstance(required_params, dict):
         for k in required_params.keys():
-            body[k] = "value"
+            if k not in body:
+                body[k] = "value"
     else:
         for p in required_params:
-            body[p] = "value"
+            if p not in body:
+                body[p] = "value"
 
     # Optional parameters
     if isinstance(optional_params, list):
         for p in optional_params:
-            body[p] = "optional_value"
+            if p not in body:
+                body[p] = "optional_value"
 
     # Body fields
     if isinstance(body_fields, list):
         for p in body_fields:
-            body[p] = "value"
+            if p not in body:
+                body[p] = "value"
 
     # Query parameters
     if isinstance(query_params, list):
@@ -265,15 +374,66 @@ def request_generator_node(state: AgentState):
     body_json = json.dumps(body, indent=2)
     query_json = json.dumps(query_dict, indent=2)
 
-    answer = f"""
-API: {operation}
+    # cURL request
+    curl_cmd = f"""curl -X {method} "{endpoint}" \\
+-H "Authorization: Bearer YOUR_API_TOKEN" \\
+-H "Content-Type: application/json" \\
+-d '{body_json}'
+"""
 
+    # Python request
+    python_request = f"""
+import requests
+
+url = "{endpoint}"
+
+headers = {{
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Content-Type": "application/json"
+}}
+
+payload = {body_json}
+
+response = requests.{method.lower()}(url, headers=headers, json=payload)
+
+print(response.status_code)
+print(response.json())
+"""
+
+    answer = f"""
+🔹 API Operation: {operation}
+
+Endpoint
 {method} {endpoint}
 
-Query Parameters:
+--------------------------------------------------
+
+Query Parameters
 {query_json}
 
-Request Body:
+--------------------------------------------------
+
+Request Body
+{body_json}
+
+--------------------------------------------------
+
+cURL Example
+{curl_cmd}
+
+--------------------------------------------------
+
+Python Example
+{python_request}
+
+--------------------------------------------------
+
+Postman Request
+
+Method: {method}
+URL: {endpoint}
+
+Body (raw JSON)
 {body_json}
 """
 

@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>Fleet Agentic AI</title>
+    <link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -96,6 +100,22 @@
             margin-left: 10px;
         }
 
+        .message.bot pre {
+            white-space: pre-wrap;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .code-block {
+            background-color: #020617;
+            border: 1px solid #334155;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -121,7 +141,9 @@
             {% if history %}
                 {% for chat in history %}
                     <div class="message user">{{ chat.user }}</div>
-                    <div class="message bot">{{ chat.bot }}</div>
+                    <div class="message bot">
+                        <pre class="code-block">{{ chat.bot }}</pre>
+                    </div>
                 {% endfor %}
             {% endif %}
         </div>
@@ -139,6 +161,7 @@
     <script>
         const chatBox = document.getElementById("chatBox");
         chatBox.scrollTop = chatBox.scrollHeight;
+        hljs.highlightAll();
     </script>
 </body>
 </html>
