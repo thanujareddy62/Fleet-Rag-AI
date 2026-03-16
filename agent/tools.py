@@ -76,7 +76,7 @@ def get_driver_count(org_id=None):
     response = requests.get(url, headers=headers, params=params)
     drivers = response.json().get("data", [])
 
-    return f"Total vehicles: {len(drivers)}"
+    return f"Total Drivers: {len(drivers)}"
 
 
 def get_all_vehicles():
@@ -117,7 +117,7 @@ def get_vehicle_count():
 
     vehicles = response.json().get("data", [])
 
-    return f"Total vehicles: {len(vehicles)}"
+    return f"Total Vehicles: {len(vehicles)}"
 
 
 def get_driver_vehicle_assignments():
@@ -186,7 +186,7 @@ def get_driver_vehicle_assignments_count():
 
     assignments = response.json().get("data", [])
 
-    return f"Total driver-vehicle assignments: {len(assignments)}"
+    return f"Total Driver-Vehicle Assignments: {len(assignments)}"
 
 
 def get_route_count():
@@ -209,7 +209,7 @@ def get_route_count():
 
     routes = response.json().get("data", [])
 
-    return f"Total routes: {len(routes)}"
+    return f"Total Routes: {len(routes)}"
 
 # -----------------------------
 # ANOMALY DETECTION
